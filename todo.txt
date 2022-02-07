@@ -1,4 +1,7 @@
-Modify to work in multiple servers
-Make admin end prettier
-Add more robustness (doesn't break with more than 50 emojis, doesn't break with duplicated emojis, etc.)
-Add editing abilities
+Change Scoring System - Recency Weightage
+Notifications
+Game Deletion
+Individual stat declaration
+Wordle Bot update notification system
+
+
