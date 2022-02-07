@@ -1,0 +1,13 @@
+db
+key: player id
+value: player_dict
+
+player_dict
+game_ids: list of game game ids
+won: numWon
+lost: numLost
+turns: total turns
+rows: total rows
+green: total green
+yellow: total yellow
+black: total black
