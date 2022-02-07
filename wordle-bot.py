@@ -6,13 +6,8 @@ from discord.ext import commands
 
 import constants
 import keep_alive
-import asyncio
-import datetime
 import logging
-import validators
 import DiscordUtils
-from json import JSONEncoder
-import jsonpickle
 
 import re
 
