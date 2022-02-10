@@ -126,15 +126,18 @@ def create_embed(message, sub_message, author, color):
     return embed
 
 def create_help_embed(ctx):
+	guild_id = str(ctx.guild.id)
+	prefix = db['guilds'][guild_id]['prefix']
 	author=ctx.author
 	help_embed = discord.Embed(title='WORDLE BOT HELP', author=author, color=constants.COLOR1)
 	help_embed.description = 'List of all the commands for the bot and what they do, along with other information.\nDISCLAIMER: this bot is not robust and is not meant to check inputs for correctness, so don\'t treat it as such. Instead, just post your scores and have fun!'
-	help_embed.add_field(name='!info', value='Contains new and planned features, announcements, and other general information!', inline=False)
+	help_embed.add_field(name=prefix+'info', value='Contains new and planned features, announcements, and other general information!', inline=False)
 	help_embed.add_field(name='Submit New Score', value='-Every day, go to https://www.powerlanguage.co.uk/wordle/ and play Wordle!\n-Once done, click share score, copy to clipboard, and paste it into a channel, and the bot will log your score', inline=False)
-	help_embed.add_field(name='!lb or !leaderboard', value='Displays the leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
-	help_embed.add_field(name='!lbs or !simple', value='Displays a more compact leaderboard for this server.', inline=False)
-	help_embed.add_field(name='!stats', value='Displays your individual wordle stats', inline=False)
-	help_embed.add_field(name='!games id1 id2 ...', value='Displays your wordle games. You can specify specific game ids, or leave it blank to display them all.', inline=False)
+	help_embed.add_field(name=prefix+'lb or '+prefix+'leaderboard', value='Displays the leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
+	help_embed.add_field(name=prefix+'lbs or '+prefix+'simple', value='Displays a more compact leaderboard for this server.', inline=False)
+	help_embed.add_field(name=prefix+'stats', value='Displays your individual wordle stats', inline=False)
+	help_embed.add_field(name=prefix+'games id1 id2 ...', value='Displays your wordle games. You can specify specific game ids, or leave it blank to display them all.', inline=False)
+	help_embed.add_field(name=prefix+'prefix [new_prefix]', value="Changes Wordle bot's command prefix. You must have admin privileges in your server", inline=False)
 	help_embed.add_field(name='REACTION GUIDE', value="✅ - Score processed\n👯 - You've already submitted this wordle!\n❓ - The bot doesn't know who you are, so you can't use this command! Send a wordle game first to get started!\n❌📂😞 - Game data not stored, sorry!\n♻️ - updated stored game in bot (won't affect stats)", inline=False)
 	help_embed.add_field(name='Add the bot to your own server!', value='On a computer, click on the bot and hit \'Add to Server\' to use it in another server!', inline=False)
 	help_embed.set_author(name=author, icon_url=author.avatar_url)

@@ -24,6 +24,7 @@ def build_player(name):
 	}
 
 db['guilds']={}
+'''
 db['players']={}
 print(db['players'])
 for player_id, player_dict in db.items():
@@ -34,6 +35,7 @@ print(db['players'].keys())
 for player_id, player_dict in db.items():
 	if player_id != 'players':
 		del db[player_id]
+'''
 '''
 guild_id = "735593986432958685"
 new_dict = {}
