@@ -24,7 +24,6 @@ async def get_prefix(bot, message):
 		try:
 			db['guilds'][guild_id]
 		except KeyError:
-			print('KE')
 			db['guilds'][guild_id] = {'name': guild.name, 'prefix': constants.default_prefix}
 			print(db['guilds'][guild_id])
 		return db['guilds'][guild_id]['prefix']
