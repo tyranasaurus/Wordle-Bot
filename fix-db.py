@@ -23,6 +23,17 @@ def build_player(name):
 		'stats': build_stats()
 	}
 
+db['guilds']={}
+db['players']={}
+print(db['players'])
+for player_id, player_dict in db.items():
+	db['players'][player_id]=player_dict
+	#del db[player_id]
+print(db.keys())
+print(db['players'].keys())
+for player_id, player_dict in db.items():
+	if player_id != 'players':
+		del db[player_id]
 '''
 guild_id = "735593986432958685"
 new_dict = {}
@@ -33,6 +44,7 @@ for key in db.keys():
 db[guild_id] = new_dict
 '''
 #del db["233740786125111297"]
+'''
 for player_id, player_dict in db.items():
 	try:
 		name = player_dict['stats']['player']
@@ -57,7 +69,7 @@ for player_id, player_dict in db.items():
 	stats['yaverage'] = round(player_dict['yellow'] / player_dict['rows'], 2)
 	stats['baverage'] = round(player_dict['black'] / player_dict['rows'], 2)
 	db[player_id] = player
-
+'''
 '''
 count = 0
 for key, player_dict in db.items():

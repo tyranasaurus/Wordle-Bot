@@ -17,11 +17,25 @@ from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO)
 
+async def get_prefix(bot, message):
+	guild = message.guild
+	guild_id = str(guild.id)
+	if guild:
+		try:
+			db['guilds'][guild_id]
+		except KeyError:
+			print('KE')
+			db['guilds'][guild_id] = {'name': guild.name, 'prefix': constants.default_prefix}
+			print(db['guilds'][guild_id])
+		return db['guilds'][guild_id]['prefix']
+	else:
+		return constants.default_prefix
+
 intents = discord.Intents.default()
 intents.members = True
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix=get_prefix, intents=intents)
 bot.remove_command('help')
 
 global roles
@@ -169,7 +183,7 @@ async def stats(ctx):
 	author = ctx.author
 	player_id = str(author.id)
 	try:
-		player = db[player_id]
+		player = db['players'][player_id]
 	except KeyError:
 		#await ctx.send(embed = create_embed("You have no stored wordle games! Send a wordle game first to use this command!","", author, constants.COLOR2))
 		await ctx.message.add_reaction('❓')
@@ -198,6 +212,16 @@ async def info(ctx):
 	await ctx.send(embed=info_embed)
 	return
 
+@bot.command(name='prefix',
+             aliases=['change_prefix'],
+             help=': Displays bot and feature info')
+@commands.has_permissions(administrator=True)
+async def prefix(ctx, prefix):
+	guild = ctx.guild
+	guild_id = str(guild.id)
+	db['guilds'][guild_id]['prefix'] = prefix.strip()
+	await ctx.message.add_reaction('✅')
+	return
 
 @bot.event
 async def on_message(message):
@@ -214,7 +238,7 @@ async def on_message(message):
 		await bot.process_commands(message)
 		return
 	try:
-		player = db[player_id]
+		player = db['players'][player_id]
 	except KeyError:
 		player=build_player(author.name+"#"+author.discriminator)
 	
@@ -235,7 +259,7 @@ async def on_message(message):
 		update_stats(player['stats'], game)
 		await message.add_reaction('✅')
 	player['games'][str(game_id)] = game
-	db[player_id] = player
+	db['players'][player_id] = player
 	return
 
 async def getSortedPlayers(ctx):
@@ -246,7 +270,7 @@ async def getSortedPlayers(ctx):
 	member_ids = []
 	for member in guild_members:
 		member_ids.append(str(member.id))
-	for player_id, player in db.items():
+	for player_id, player in db['players'].items():
 		if player_id not in member_ids:
 			continue
 		guild_players.append(player)
@@ -340,7 +364,7 @@ async def games(ctx, *game_ids):
 	player_id = str(author.id)
 
 	try:
-		player = db[player_id]
+		player = db['players'][player_id]
 	except KeyError:
 		#await ctx.send(embed = create_embed("You have no stored wordle games! Send a wordle game first to use this command!","", author, constants.COLOR2))
 		await ctx.message.add_reaction('❓')

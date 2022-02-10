@@ -11,3 +11,5 @@ RED = COLOR2
 PENALTY = 2
 players_per_page = 10
 games_per_page = 15
+
+default_prefix = '!'
