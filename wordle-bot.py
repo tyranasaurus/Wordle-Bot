@@ -156,7 +156,7 @@ def create_info_embed(ctx):
 async def on_ready():
 	print(f'{bot.user.name} has connected to Discord!')
 	await bot.change_presence(activity=discord.Streaming(name="Wordle", url='https://www.powerlanguage.co.uk/wordle'))
-	await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="For casual use only."))
+	await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="!help"))
 	print("I'm in "+str(len(bot.guilds))+" guilds!")
 
 @bot.check
