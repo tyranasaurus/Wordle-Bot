@@ -131,7 +131,6 @@ def create_help_embed(ctx):
 	author=ctx.author
 	help_embed = discord.Embed(title='WORDLE BOT HELP', author=author, color=constants.COLOR1)
 	help_embed.description = 'List of all the commands for the bot and what they do, along with other information.\nDISCLAIMER: this bot is not robust and is not meant to check inputs for correctness, so don\'t treat it as such. Instead, just post your scores and have fun!'
-	help_embed.add_field(name=prefix+'info', value='Contains new and planned features, announcements, and other general information!', inline=False)
 	help_embed.add_field(name='Submit New Score', value='-Every day, go to https://www.powerlanguage.co.uk/wordle/ and play Wordle!\n-Once done, click share score, copy to clipboard, and paste it into a channel, and the bot will log your score', inline=False)
 	help_embed.add_field(name=prefix+'lb or '+prefix+'leaderboard', value='Displays the leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
 	help_embed.add_field(name=prefix+'lbs or '+prefix+'simple', value='Displays a more compact leaderboard for this server.', inline=False)
@@ -141,6 +140,8 @@ def create_help_embed(ctx):
 	help_embed.add_field(name='REACTION GUIDE', value="✅ - Score processed\n👯 - You've already submitted this wordle!\n❓ - The bot doesn't know who you are, so you can't use this command! Send a wordle game first to get started!\n❌📂😞 - Game data not stored, sorry!\n♻️ - updated stored game in bot (won't affect stats)", inline=False)
 	help_embed.add_field(name='Add the bot to your own server!', value='On a computer, click on the bot and hit \'Add to Server\' to use it in another server!', inline=False)
 	help_embed.set_author(name=author, icon_url=author.avatar_url)
+	help_embed.add_field(name=prefix+'info', value='Contains new and planned features, announcements, and other general information!', inline=False)
+	help_embed.add_field(name='Join the Wordle Bot Community Server!', value='https://discord.gg/B492ArRmCQ. Join to report bugs, suggest features, get help, and witness and assist with bot development!', inline=False)
 	return help_embed
 
 def create_info_embed(ctx):
@@ -149,9 +150,9 @@ def create_info_embed(ctx):
 	info_embed.description = 'Contains new updates, planned features, announcements, and more! This bot is created by Tyranasaurus#3952. Message them with any questions!'
 	info_embed.add_field(name='New in version 2.2', value='Bot responds to mentions, and command prefixes can be changed.', inline=False)
 	info_embed.add_field(name='Planned Features', value='-Allow deletion of game with specific id\n-ability to see individual stats/games of someone other than yourself\n-Modify leaderboard to be based on a recency weightage.\n-Notification system reminding you to play your daily game.', inline=False)
-	info_embed.add_field(name='Join the Wordle Bot Community Server', value='This bot is meant to be used for entertainment use only. It may be down sometimes, and it may break, and it may be easily duped. I am not responsible for any of this.', inline=False)
+	info_embed.add_field(name='Join the Wordle Bot Community Server!', value='https://discord.gg/B492ArRmCQ. Join to report bugs, suggest features, get help, and witness and assist with bot development!', inline=False)
 	info_embed.set_author(name=author, icon_url=author.avatar_url)
-	info_embed.set_footer("Wordle Bot v2.2")
+	info_embed.set_footer(text = "Wordle Bot v2.2")
 	return info_embed
 
 @bot.event
