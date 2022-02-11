@@ -26,9 +26,10 @@ async def get_prefix(bot, message):
 		except KeyError:
 			db['guilds'][guild_id] = {'name': guild.name, 'prefix': constants.default_prefix}
 			print(db['guilds'][guild_id])
-		return db['guilds'][guild_id]['prefix']
+		prefix = db['guilds'][guild_id]['prefix']
 	else:
-		return constants.default_prefix
+		prefix = constants.default_prefix
+	return prefix
 
 intents = discord.Intents.default()
 intents.members = True
@@ -224,7 +225,17 @@ async def prefix(ctx, prefix):
 	db['guilds'][guild_id]['prefix'] = prefix.strip()
 	await ctx.message.add_reaction('✅')
 	return
-
+'''
+@bot.command(name='channel',
+             aliases=['set_channel'])
+@commands.has_permissions(administrator=True)
+async def prefix(ctx, channel):
+	guild = ctx.guild
+	guild_id = str(guild.id)
+	db['guilds'][guild_id]['prefix'] = prefix.strip()
+	await ctx.message.add_reaction('✅')
+	return
+'''
 @bot.event
 async def on_message(message):
 	author = message.author
