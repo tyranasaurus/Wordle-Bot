@@ -29,13 +29,13 @@ async def get_prefix(bot, message):
 		prefix = db['guilds'][guild_id]['prefix']
 	else:
 		prefix = constants.default_prefix
-	return prefix
+	return commands.when_mentioned_or(*prefix)(bot, message)
 
 intents = discord.Intents.default()
 intents.members = True
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-bot = commands.Bot(command_prefix=get_prefix, intents=intents)
+bot = commands.Bot(command_prefix=get_prefix, case_insensitive = True, strip_after_prefix = True, intents=intents)
 bot.remove_command('help')
 
 global roles
@@ -147,10 +147,11 @@ def create_info_embed(ctx):
 	author=ctx.author
 	info_embed = discord.Embed(title='WORDLE BOT INFO', author=author, color=constants.COLOR1)
 	info_embed.description = 'Contains new updates, planned features, announcements, and more! This bot is created by Tyranasaurus#3952. Message them with any questions!'
-	info_embed.add_field(name='NEW', value='Bot now stores individual games! Use !games to see your past games - see !help for more info. Resend games prior to the update to store them (RECOMMENDED)', inline=False)
-	info_embed.add_field(name='Planned Features', value='-Allow deletion of game with specific id\n-ability to see individual stats/games of someone other than yourself\n-Modify leaderboard to be based on a recency weightage.\n-Notification system reminding you to play your daily game.\n-DM me for other feature requests!', inline=False)
-	info_embed.add_field(name='DISCLAIMER', value='This bot is meant to be used for entertainment use only. It may be down sometimes, and it may break, and it may be easily duped. I am not responsible for any of this.', inline=False)
+	info_embed.add_field(name='New in version 2.2', value='Bot responds to mentions, and command prefixes can be changed.', inline=False)
+	info_embed.add_field(name='Planned Features', value='-Allow deletion of game with specific id\n-ability to see individual stats/games of someone other than yourself\n-Modify leaderboard to be based on a recency weightage.\n-Notification system reminding you to play your daily game.', inline=False)
+	info_embed.add_field(name='Join the Wordle Bot Community Server', value='This bot is meant to be used for entertainment use only. It may be down sometimes, and it may break, and it may be easily duped. I am not responsible for any of this.', inline=False)
 	info_embed.set_author(name=author, icon_url=author.avatar_url)
+	info_embed.set_footer("Wordle Bot v2.2")
 	return info_embed
 
 @bot.event
