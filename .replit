@@ -1,4 +1,4 @@
 language = "python3"
-#run = "python store_db.py"
+run = "python store_db.py"
 #run = "python fix-db.py"
-run = "python wordle-bot.py"
+#run = "python wordle-bot (copy).py"
