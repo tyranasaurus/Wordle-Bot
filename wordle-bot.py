@@ -126,6 +126,10 @@ def create_embed(message, sub_message, author, color):
     #print(len(embed))
     return embed
 
+async def sendDm(user_id, content = None, embed = None):
+    user = await bot.fetch_user(user_id)
+    await user.send(content = content, embed = embed)
+
 def create_help_embed(ctx):
 	guild_id = str(ctx.guild.id)
 	prefix = db['guilds'][guild_id]['prefix']
@@ -223,12 +227,14 @@ async def info(ctx):
 @commands.is_owner()
 async def reset(ctx, *player_ids):
 	message = ctx.message
+	valid = []
 	names=[]
 	for player_id in player_ids:
 		try:
 			names.append(db['players'][player_id]['name'])
 		except KeyError:
 			continue
+		valid.append(player_id)
 	response = await ctx.send(embed = create_embed("Are you sure you want to do this?", "This will delete the databases for the users: "+str(names), ctx.author, constants.COLOR2))
 	await response.add_reaction('✅')
 	await response.add_reaction('❌')
@@ -240,8 +246,9 @@ async def reset(ctx, *player_ids):
 		await response.add_reaction('⌛')
 	else:
 		if str(reaction.emoji) == '✅':
-			for player_id in player_ids:
+			for player_id in valid:
 				del db['players'][player_id]
+				await sendDm(int(player_id), embed = create_embed("Your Wordle Scores have been reset.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
 	return
 
