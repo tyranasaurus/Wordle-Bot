@@ -8,6 +8,7 @@ import constants
 import keep_alive
 import logging
 import DiscordUtils
+import asyncio
 
 import re
 
@@ -217,8 +218,35 @@ async def info(ctx):
 	await ctx.send(embed=info_embed)
 	return
 
+@bot.command(name='reset',
+             aliases=[])
+@commands.is_owner()
+async def reset(ctx, *player_ids):
+	message = ctx.message
+	names=[]
+	for player_id in player_ids:
+		try:
+			names.append(db['players'][player_id]['name'])
+		except KeyError:
+			continue
+	response = await ctx.send(embed = create_embed("Are you sure you want to do this?", "This will delete the databases for the users: "+str(names), ctx.author, constants.COLOR2))
+	await response.add_reaction('✅')
+	await response.add_reaction('❌')
+	def check(reaction, user):
+		return user == message.author and (str(reaction.emoji) == '✅' or str(reaction.emoji) == '❌')
+	try:
+		reaction, user = await bot.wait_for('reaction_add', timeout=60.0, check=check)
+	except asyncio.TimeoutError:
+		await response.add_reaction('⌛')
+	else:
+		if str(reaction.emoji) == '✅':
+			for player_id in player_ids:
+				del db['players'][player_id]
+			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
+	return
+
 @bot.command(name='prefix',
-             aliases=['change_prefix'],
+	         aliases=['change_prefix'],
              help=': Displays bot and feature info')
 @commands.has_permissions(administrator=True)
 async def prefix(ctx, prefix):
