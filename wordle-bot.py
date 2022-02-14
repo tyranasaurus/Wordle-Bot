@@ -247,7 +247,7 @@ async def reset(ctx, *player_ids):
 	else:
 		if str(reaction.emoji) == '✅':
 			for player_id in valid:
-				del db['players'][player_id]
+				db['players'].pop(player_id)
 				await sendDm(int(player_id), embed = create_embed("Your Wordle Scores have been reset.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
 	return
