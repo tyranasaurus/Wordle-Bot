@@ -39,11 +39,13 @@ def build_game():
 		'games': {},
 		'stats': build_stats()
 	}
-#try:
-	#del db['games']
-#except:
-	#print("No database")
-#db['games'] = {}
+'''
+try:
+	del db['games']
+except:
+	print("No database")
+db['games'] = {}
+'''
 for player_id, player in db['players'].items():
 	try:
 		print(player['name'])
