@@ -14,3 +14,5 @@ archives_per_page = 15
 games_per_page = 15
 
 default_prefix = '!'
+
+owner_id = 275541576896217089
