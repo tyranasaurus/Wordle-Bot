@@ -332,7 +332,7 @@ async def announce(ctx):
 		if not player_dict['subscribed']:
 			continue
 		await sendDm(int(player_id), embed = announce_embed)
-		asyncio.sleep(1)
+		await asyncio.sleep(1)
 	return
 
 @bot.command(name='prefix',
