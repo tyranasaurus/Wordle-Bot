@@ -9,6 +9,7 @@ import keep_alive
 import logging
 import DiscordUtils
 import asyncio
+import time
 
 import re
 
@@ -111,13 +112,18 @@ def add_game_stats(stats, game):
 def remove_game(player_id, game_id):
 	try:
 		player = db['players'][player_id]
+		print('player exists')
 		try:
 			player_game = player['games'][game_id]
+			print('game exists')
 			player_stats = db['players'][player_id]['stats']
 			if player_stats['played'] == 1:
+				print('last game')
 				del db['players'][player_id]
 			else:
+				print('remove player stats')
 				remove_game_stats(player_stats, player_game)
+				del player['games'][game_id]
 		except KeyError:
 			print("Can't find game:", game_id)
 		
@@ -126,13 +132,17 @@ def remove_game(player_id, game_id):
 	
 	try:
 		game_dict = db['games'][game_id]
+		print('game dict exists')
 		try:
 			game_dict_game = game_dict['games'][player_id]
 			game_stats = db['games'][game_id]['stats']
 			if game_stats['played'] == 1:
+				print('last game')
 				del db['games'][game_id]
 			else:
+				print('remove game stats')
 				remove_game_stats(game_stats, game_dict_game)
+				del game_dict['games'][player_id]
 		except KeyError:
 			print("Can't find game for player:", player_id)
 		
@@ -316,6 +326,43 @@ async def reset(ctx, *player_ids):
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
 	return
 
+@bot.command(name='remove',
+             aliases=[])
+@commands.is_owner()
+async def remove(ctx, player_id, *game_ids):
+	message = ctx.message
+	try:
+		name = db['players'][player_id]['name']
+	except KeyError:
+		await message.add_reaction('❌')
+		return
+	valid = []
+	for game_id in game_ids:
+		try:
+			game = db['players'][player_id]['games'][game_id]
+		except KeyError:
+			continue
+		valid.append(game_id)
+	if not valid:
+		await message.add_reaction('❌')
+		return
+	response = await ctx.send(embed = create_embed("Are you sure you want to do this?", "This will delete the games "+str(game_ids)+" for the users: "+name, ctx.author, constants.COLOR2))
+	await response.add_reaction('✅')
+	await response.add_reaction('❌')
+	def check(reaction, user):
+		return user == message.author and (str(reaction.emoji) == '✅' or str(reaction.emoji) == '❌')
+	try:
+		reaction, user = await bot.wait_for('reaction_add', timeout=60.0, check=check)
+	except asyncio.TimeoutError:
+		await response.add_reaction('⌛')
+	else:
+		if str(reaction.emoji) == '✅':
+			for game_id in valid:
+				print('remove')
+				remove_game(player_id, game_id)
+			#await sendDm(int(player_id), embed = create_embed("Your Wordle Scores for Wordle numbers "+str(valid)+" have been removed.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
+			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
+	return
 
 
 @bot.command(name='announce',
@@ -323,7 +370,9 @@ async def reset(ctx, *player_ids):
 @commands.is_owner()
 async def announce(ctx):
 	announce_embed = await create_announce_embed()
+	count = 0
 	for player_id, player_dict in db['players'].items():
+		print(player_dict['name'])
 		try:
 			subscribed = player_dict['subscribed']
 		except KeyError:
@@ -331,8 +380,12 @@ async def announce(ctx):
 			subscribed = True
 		if not player_dict['subscribed']:
 			continue
+		count += 1
+		if count < 58:
+			continue
+		print(count)
 		await sendDm(int(player_id), embed = announce_embed)
-		await asyncio.sleep(1)
+		time.sleep(1)
 	return
 
 @bot.command(name='prefix',
@@ -375,7 +428,7 @@ async def on_message(message):
 			db['players'][player_id]['subscribed'] = True
 			await message.channel.send(embed = create_embed("You've been subscribed to Wordle Bot Announcements!", "You can always unsubscribe with 'stop' or 'unsubscribe'", author, constants.COLOR1))
 			return
-	if not re.search("^Wor dle \d+ ([1-9]+\d*|X)/[1-9]+\d*[*\n🟩🟧🟨🟦⬛⬜]+", content):
+	if not re.search("^Wordle \d+ ([1-9]+\d*|X)/[1-9]+\d*[*\n🟩🟧🟨🟦⬛⬜]+", content):
 		#print("Random Message")
 		await bot.process_commands(message)
 		return
@@ -383,7 +436,7 @@ async def on_message(message):
 		player = db['players'][player_id]
 	except KeyError:
 		player=build_player(author.name+"#"+author.discriminator)
-	
+	print("Wordle Message")
 	space_0 = content.find(' ')
 	space_1 = content[space_0 + 1:].find(' ')
 	rows = content[content.find('\n'):]
