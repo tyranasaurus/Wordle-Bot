@@ -20,8 +20,8 @@ logging.basicConfig(level=logging.INFO)
 
 async def get_prefix(bot, message):
 	guild = message.guild
-	guild_id = str(guild.id)
 	if guild:
+		guild_id = str(guild.id)
 		try:
 			db['guilds'][guild_id]
 		except KeyError:
@@ -162,6 +162,7 @@ def build_player(name):
 	return {
 		'games': {},
 		'name': name,
+		'subscribed': True,
 		'stats': build_stats()
 	}
 
@@ -186,16 +187,20 @@ async def sendDm(user_id, content = None, embed = None):
     await user.send(content = content, embed = embed)
 
 def create_help_embed(ctx):
-	guild_id = str(ctx.guild.id)
-	prefix = db['guilds'][guild_id]['prefix']
+	if ctx.guild:
+		guild_id = str(ctx.guild.id)
+		prefix = db['guilds'][guild_id]['prefix']
+	else:
+		prefix = constants.default_prefix
 	author=ctx.author
 	help_embed = discord.Embed(title='WORDLE BOT HELP', author=author, color=constants.COLOR1)
 	help_embed.description = 'List of all the commands for the bot and what they do, along with other information.\nDISCLAIMER: this bot is not robust and is not meant to check inputs for correctness, so don\'t treat it as such. Instead, just post your scores and have fun!'
 	help_embed.add_field(name='Submit New Score', value='-Every day, go to https://www.powerlanguage.co.uk/wordle/ and play Wordle!\n-Once done, click share score, copy to clipboard, and paste it into a channel, and the bot will log your score', inline=False)
 	help_embed.add_field(name=prefix+'lb or '+prefix+'leaderboard', value='Displays the leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
 	help_embed.add_field(name=prefix+'lbs or '+prefix+'simple', value='Displays a more compact leaderboard for this server.', inline=False)
-	help_embed.add_field(name=prefix+'stats', value='Displays your individual wordle stats', inline=False)
-	help_embed.add_field(name=prefix+'games id1 id2 ...', value='Displays your wordle games. You can specify specific game ids, or leave it blank to display them all.', inline=False)
+	help_embed.add_field(name=prefix+'games id1 id2 ...', value='Displays overall statistics for wordle games, including avergae score and winrate. You can specify specific game ids, or leave it blank to display them all.', inline=False)
+	help_embed.add_field(name=prefix+'player [@member]', value="Displays your or another member's wordle stats", inline=False)
+	help_embed.add_field(name=prefix+'archive id1 id2 ...', value='Displays your wordle games. You can specify specific game ids, or leave it blank to display them all.', inline=False)
 	help_embed.add_field(name=prefix+'prefix [new_prefix]', value="Changes Wordle bot's command prefix. You must have admin privileges in your server", inline=False)
 	help_embed.add_field(name='REACTION GUIDE', value="✅ - Score processed\n👯 - You've already submitted this wordle!\n❓ - The bot doesn't know who you are, so you can't use this command! Send a wordle game first to get started!\n❌📂😞 - Game data not stored, sorry!\n♻️ - updated stored game in bot (won't affect stats)", inline=False)
 	help_embed.add_field(name='Add the bot to your own server!', value='On a computer, click on the bot and hit \'Add to Server\' to use it in another server!', inline=False)
@@ -248,13 +253,13 @@ async def stats(ctx, member: discord.Member = None):
 	player = member or ctx.author
 	player_id = str(player.id)
 	try:
-		player = db['players'][player_id]
+		player_dict = db['players'][player_id]
 	except KeyError:
 		#await ctx.send(embed = create_embed("You have no stored wordle games! Send a wordle game first to use this command!","", author, constants.COLOR2))
 		await ctx.message.add_reaction('❓')
 		return
 
-	stats = player['stats']
+	stats = player_dict['stats']
 	await ctx.send(embed=create_embed("", "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage']), player, constants.COLOR1))
 	return
 
@@ -308,6 +313,44 @@ async def reset(ctx, *player_ids):
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
 	return
 
+def create_announce_embed():
+	announce_embed = discord.Embed(title='WORDLE BOT v 3.0!', author=await bot.fetch_user(bot.owner_id), color=constants.COLOR1, footer = "This announcement was automatically sent by Wordle Bot. If you would like to unsubscribe from future announcements, type 'STOP'")
+	announce_embed.set_footer(text = "This message was automatically sent by Wordle Bot. If you would like to unsubscribe from future announcements, type 'STOP'")
+	
+	announce_embed.description = 'List of all the commands for the bot and what they do, along with other information.\nDISCLAIMER: this bot is not robust and is not meant to check inputs for correctness, so don\'t treat it as such. Instead, just post your scores and have fun!'
+	announce_embed.add_field(name='Submit New Score', value='-Every day, go to https://www.powerlanguage.co.uk/wordle/ and play Wordle!\n-Once done, click share score, copy to clipboard, and paste it into a channel, and the bot will log your score', inline=False)
+	announce_embed.add_field(name=prefix+'lb or '+prefix+'leaderboard', value='Displays the leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
+	announce_embed.add_field(name=prefix+'lbs or '+prefix+'simple', value='Displays a more compact leaderboard for this server.', inline=False)
+	announce_embed.add_field(name=prefix+'games id1 id2 ...', value='Displays overall statistics for wordle games, including avergae score and winrate. You can specify specific game ids, or leave it blank to display them all.', inline=False)
+	announce_embed.add_field(name=prefix+'player [@member]', value="Displays your or another member's wordle stats", inline=False)
+	announce_embed.add_field(name=prefix+'archive id1 id2 ...', value='Displays your wordle games. You can specify specific game ids, or leave it blank to display them all.', inline=False)
+	announce_embed.add_field(name=prefix+'prefix [new_prefix]', value="Changes Wordle bot's command prefix. You must have admin privileges in your server", inline=False)
+	announce_embed.add_field(name='REACTION GUIDE', value="✅ - Score processed\n👯 - You've already submitted this wordle!\n❓ - The bot doesn't know who you are, so you can't use this command! Send a wordle game first to get started!\n❌📂😞 - Game data not stored, sorry!\n♻️ - updated stored game in bot (won't affect stats)", inline=False)
+	announce_embed.add_field(name='Add the bot to your own server!', value='On a computer, click on the bot and hit \'Add to Server\' to use it in another server!', inline=False)
+	announce_embed.set_author(name=author, icon_url=author.avatar_url)
+	announce_embed.add_field(name=prefix+'info', value='Contains new and planned features, announcements, and other general information!', inline=False)
+	announce_embed.add_field(name='Join the Wordle Bot Community Server!', value='https://discord.gg/B492ArRmCQ. Join to report bugs, suggest features, get help, and witness and assist with bot development!', inline=False)
+	return announce_embed
+
+@bot.command(name='announce',
+             aliases=[])
+@commands.is_owner()
+async def announce(ctx):
+	message = ctx.message
+	valid = []
+	names=[]
+	
+	for player_id, player_dict in db['players'].items():
+		try:
+			subscribed = player_dict['subscribed']
+		except KeyError:
+			player_dict['subscribed'] = True
+			subscribed = True
+		if not player_dict['subscribed']:
+			continue
+		await sendDm(int(player_id), embed = announce_embed)
+	return
+
 @bot.command(name='prefix',
 	         aliases=['change_prefix'],
              help=': Displays bot and feature info')
@@ -334,12 +377,21 @@ async def on_message(message):
 	author = message.author
 	player_id = str(author.id)
 	guild = message.guild
-	print('guild: ', guild.name)
+	#print('guild: ', guild.name)
 	#invites = await guild.invites()
 	#print(invites)
 	channel = message.channel
 	content = message.content
-	if not re.search("^Wordle \d+ ([1-9]+\d*|X)/[1-9]+\d*[*\n🟩🟧🟨🟦⬛⬜]+", content):
+	if not guild:
+		if message.content.strip().upper() == 'STOP' or message.content.strip().upper() == 'UNSUBSCRIBE':
+			db['players'][player_id]['subscribed'] = False
+			await message.channel.send(embed = create_embed("You've been unsubscribed from Wordle Bot Announcements", "We're sorry to see you go! You can always resubscribe with 'start' or 'subscribe'", author, constants.COLOR2))
+			return
+		if message.content.strip().upper() == 'START' or message.content.strip().upper() == 'SUBSCRIBE':
+			db['players'][player_id]['subscribed'] = True
+			await message.channel.send(embed = create_embed("You've been subscribed to Wordle Bot Announcements!", "You can always unsubscribe with 'stop' or 'unsubscribe'", author, constants.COLOR1))
+			return
+	if not re.search("^Wor dle \d+ ([1-9]+\d*|X)/[1-9]+\d*[*\n🟩🟧🟨🟦⬛⬜]+", content):
 		#print("Random Message")
 		await bot.process_commands(message)
 		return
