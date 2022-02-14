@@ -1,4 +1,5 @@
 language = "python3"
-run = "python build-games.py"
+#run = "python build-games.py"
+run = "python fix-db.py"
 #run = "python store-db.py"
 #run = "python wordle-bot.py"

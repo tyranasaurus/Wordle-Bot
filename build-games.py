@@ -39,23 +39,31 @@ def build_game():
 		'games': {},
 		'stats': build_stats()
 	}
-try:
-	del db['games']
-except:
-	print("No database")
-db['games'] = {}
+#try:
+	#del db['games']
+#except:
+	#print("No database")
+#db['games'] = {}
 for player_id, player in db['players'].items():
-	print(player['name'])
+	try:
+		print(player['name'])
+	except KeyError:
+		print(player)
 	for game_id, player_game in player['games'].items():
 		if not player_game:
 			continue
-		print(game_id)
+		#print(game_id)
 		try:
 			game = db['games'][game_id]
-			print('old')
+			#print('old')
 		except KeyError:
 			game = build_game()
-			print('new')
+			#print('new')
+		try:
+			if game['games'][player_id]:
+				continue
+		except KeyError:
+			pass
 		game['games'][player_id] = player_game
 		update_stats(game['stats'], player_game)
 		db['games'][game_id] = game

@@ -23,7 +23,7 @@ def build_player(name):
 		'stats': build_stats()
 	}
 
-db['players']=db['players']['players']
+del db['players']['guilds']
 '''
 db['players']={}
 print(db['players'])
