@@ -90,7 +90,7 @@ def build_stats():
 		'baverage': 0
 	}
 
-def update_stats(stats, game):
+def add_game_stats(stats, game):
 	if game['win']:
 		stats['won'] += 1
 	else:
@@ -108,6 +108,56 @@ def update_stats(stats, game):
 	stats['baverage'] = round(stats['black'] / stats['guesses'], 2)
 	return
 
+def remove_game(player_id, game_id):
+	try:
+		player = db['players'][player_id]
+		try:
+			player_game = player['games'][game_id]
+			player_stats = db['players'][player_id]['stats']
+			if player_stats['played'] == 1:
+				del db['players'][player_id]
+			else:
+				remove_game_stats(player_stats, player_game)
+		except KeyError:
+			print("Can't find game:", game_id)
+		
+	except KeyError:
+		print("Can't find player:", player_id)
+	
+	try:
+		game_dict = db['games'][game_id]
+		try:
+			game_dict_game = game_dict['games'][player_id]
+			game_stats = db['games'][game_id]['stats']
+			if game_stats['played'] == 1:
+				del db['games'][game_id]
+			else:
+				remove_game_stats(game_stats, game_dict_game)
+		except KeyError:
+			print("Can't find game for player:", player_id)
+		
+	except KeyError:
+		print("Can't find game dict:", game_id)
+	
+
+def remove_game_stats(stats, game):
+	stats['played'] -= 1
+	if game['win']:
+		stats['won'] -= 1
+	else:
+		stats['lost'] -= 1
+	stats['score'] -= game['score']
+	stats['guesses'] -= game['guesses']
+	stats['winrate'] = int(round(stats['won'] / stats['played'], 2)*100)
+	stats['green'] -= game['green']
+	stats['yellow'] -= game['yellow']
+	stats['black'] -= game['black']
+	stats['saverage'] = round(stats['score'] / stats['played'], 2)
+	stats['gaverage'] = round(stats['green'] / stats['guesses'] , 2)
+	stats['yaverage'] = round(stats['yellow'] / stats['guesses'], 2)
+	stats['baverage'] = round(stats['black'] / stats['guesses'], 2)
+	return
+
 def build_player(name):
 	return {
 		'games': {},
@@ -115,6 +165,11 @@ def build_player(name):
 		'stats': build_stats()
 	}
 
+def build_game_dict():
+	return {
+		'games': {},
+		'stats': build_stats()
+	}
 
 
 def create_embed(message, sub_message, author, color):
@@ -186,12 +241,12 @@ async def deactivate_author(ctx):
 		print("ValueError")
 		pass
 
-@bot.command(name='stats',
+@bot.command(name='player',
              aliases=[],
-             help=': Prints your statistics')
-async def stats(ctx):
-	author = ctx.author
-	player_id = str(author.id)
+             help=": prints your or another player's statistics")
+async def stats(ctx, member: discord.Member = None):
+	player = member or ctx.author
+	player_id = str(player.id)
 	try:
 		player = db['players'][player_id]
 	except KeyError:
@@ -200,7 +255,7 @@ async def stats(ctx):
 		return
 
 	stats = player['stats']
-	await ctx.send(embed=create_embed("", "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage']), author, constants.COLOR1))
+	await ctx.send(embed=create_embed("", "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage']), player, constants.COLOR1))
 	return
 
 @bot.command(
@@ -247,7 +302,8 @@ async def reset(ctx, *player_ids):
 	else:
 		if str(reaction.emoji) == '✅':
 			for player_id in valid:
-				db['players'].pop(player_id)
+				for game_id in db['players'][player_id]['games'].keys():
+					remove_game(player_id, game_id)
 				await sendDm(int(player_id), embed = create_embed("Your Wordle Scores have been reset.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
 	return
@@ -255,7 +311,7 @@ async def reset(ctx, *player_ids):
 @bot.command(name='prefix',
 	         aliases=['change_prefix'],
              help=': Displays bot and feature info')
-@commands.has_permissions(administrator=True)
+@commands.has_guild_permissions(administrator=True)
 async def prefix(ctx, prefix):
 	guild = ctx.guild
 	guild_id = str(guild.id)
@@ -296,9 +352,15 @@ async def on_message(message):
 	space_1 = content[space_0 + 1:].find(' ')
 	rows = content[content.find('\n'):]
 	game_id = int(content[space_0 + 1 : space_0 + 1 + space_1])
+
 	if (str(game_id) in list(player['games'].keys()) and player['games'][str(game_id)]):
 		await message.add_reaction('👯')
 		return
+	
+	try:
+		game_dict = db['games'][str(game_id)]
+	except KeyError:
+		game_dict = build_game_dict()
 
 	score = content[content.find('/') - 1]
 	max_turns = int(content[content.find('/') + 1])
@@ -306,10 +368,13 @@ async def on_message(message):
 	if (str(game_id) in list(player['games'].keys()) and not player['games'][str(game_id)]):
 		await message.add_reaction('♻️')
 	else:
-		update_stats(player['stats'], game)
+		add_game_stats(player['stats'], game)
 		await message.add_reaction('✅')
+	add_game_stats(game_dict['stats'], game)
 	player['games'][str(game_id)] = game
+	game_dict['games'][player_id] = game
 	db['players'][player_id] = player
+	db['games'][str(game_id)] = game_dict
 	return
 
 async def getSortedPlayers(ctx):
@@ -373,16 +438,17 @@ async def lb(ctx):
 	await paginator.run(embeds)
 	return
 
-async def display_games(ctx, player, games):
-	title = player['name'].upper() + " WORDLES"
+async def display_archive(ctx, player, games):
+	player_dict = db['players'][str(player.id)]
+	title = player_dict['name'] + " Wordles"
 	description = "Use the arrows at the bottom to navigate through the pages."
 	embeds = []
-	numPages = (len(games)-1)//constants.games_per_page + 1
+	numPages = (len(games)-1)//constants.archives_per_page + 1
 
 	for gameIndex in range(0, len(games)):
-		pageIndex=gameIndex//constants.games_per_page
-		if gameIndex % constants.games_per_page == 0:
-			embeds.append(discord.Embed(title=title+" (Page "+str(pageIndex+1)+"/"+str(numPages)+")", description=description, author=ctx.author, color=constants.GREEN))
+		pageIndex=gameIndex//constants.archives_per_page
+		if gameIndex % constants.archives_per_page == 0:
+			embeds.append(discord.Embed(title=title+" (Page "+str(pageIndex+1)+"/"+str(numPages)+")", description=description, author=player, color=constants.GREEN))
 		game_id, game = games[gameIndex]
 		if game:
 			if game['win']:
@@ -405,16 +471,15 @@ async def display_games(ctx, player, games):
 	await paginator.run(embeds)
 	return
 
-@bot.command(name='games',
-             aliases=['game'],
-             help='Displays your stats for a specific game')
+@bot.command(name='archive',
+             aliases=[],
+             help='Displays your stats for specific game(s)')
 async def games(ctx, *game_ids):
-	guild = ctx.guild
-	author = ctx.author
-	player_id = str(author.id)
+	player = ctx.author
+	player_id = str(player.id)
 
 	try:
-		player = db['players'][player_id]
+		player_dict = db['players'][player_id]
 	except KeyError:
 		#await ctx.send(embed = create_embed("You have no stored wordle games! Send a wordle game first to use this command!","", author, constants.COLOR2))
 		await ctx.message.add_reaction('❓')
@@ -422,17 +487,59 @@ async def games(ctx, *game_ids):
 	relevant_games = {}
 	for game_id in game_ids:
 		try:
-			game = player['games'][game_id]
+			game = player_dict['games'][game_id]
 			relevant_games[game_id] = game
 		except KeyError:
 			continue
 	if not relevant_games:
-		relevant_games = player['games']
-	await display_games(ctx, player, sorted(list(relevant_games.items()), key = lambda x: int(x[0])*-1))
+		relevant_games = player_dict['games']
+	await display_archive(ctx, player, sorted(list(relevant_games.items()), key = lambda x: int(x[0])*-1))
 	return
 
+async def display_games(ctx, player, games):
+	player_dict = db['players'][str(player.id)]
+	title = "Wordle Game Stats"
+	description = "Use the arrows at the bottom to navigate through the pages."
+	embeds = []
+	numPages = (len(games)-1)//constants.games_per_page + 1
 
+	for gameIndex in range(0, len(games)):
+		pageIndex=gameIndex//constants.games_per_page
+		if gameIndex % constants.games_per_page == 0:
+			embeds.append(discord.Embed(title=title+" (Page "+str(pageIndex+1)+"/"+str(numPages)+")", description=description, author=player, color=constants.GREEN))
+		game_id, game = games[gameIndex]
+		stats = game['stats']
+		name = 'Wordle '+str(game_id)
+		val = "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage'])
+		embeds[pageIndex].add_field(name=name, value=val, inline = True)
+	paginator = DiscordUtils.Pagination.CustomEmbedPaginator(ctx, timeout = constants.TIMEOUT/2, auto_footer=True, remove_reactions=True)
+	paginator.add_reaction('⏮️', "first")
+	paginator.add_reaction('⏪', "back")
+	paginator.add_reaction('🔐', "lock")
+	paginator.add_reaction('⏩', "next")
+	paginator.add_reaction('⏭️', "last")
+	#print(len(embeds))
+	await paginator.run(embeds)
+	return
 
+@bot.command(name='game',
+             aliases=['games'],
+             help='Displays overall stats for specific games')
+async def games(ctx, *game_ids):
+	player = ctx.author
+	player_id = str(player.id)
+
+	relevant_games = {}
+	for game_id in game_ids:
+		try:
+			game = db['games'][game_id]
+			relevant_games[game_id] = game
+		except KeyError:
+			continue
+	if not relevant_games:
+		relevant_games = db['games']
+	await display_games(ctx, player, sorted(list(relevant_games.items()), key = lambda x: int(x[0])*-1))
+	return
 
 keep_alive.keep_alive()
 

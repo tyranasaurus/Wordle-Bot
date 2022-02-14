@@ -1,0 +1,17 @@
+db
+	-players: dict{player_ids}
+	-games: dict{game_ids}
+	-guilds: dict{guild_ids}
+
+player_ids
+	game_ids: {score, guessses, win, max_turns, rows, green, yellow, black}
+	name
+	stats: {won, lost, played, score, guesses, saverage, winrate, green, gaverage, yellow, yaverage, black, baverage}
+
+guild_ids
+	name
+	prefix
+
+game_ids
+	player_ids: {score, guessses, win, max_turns, rows, green, yellow, black}
+	stats: {won, lost, played, score, guesses, saverage, winrate, green, gaverage, yellow, yaverage, black, baverage}
