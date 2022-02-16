@@ -384,7 +384,7 @@ async def announce(ctx):
 		if count < 58:
 			continue
 		print(count)
-		await sendDm(int(player_id), embed = announce_embed)
+		#await sendDm(int(player_id), embed = announce_embed)
 		time.sleep(1)
 	return
 
