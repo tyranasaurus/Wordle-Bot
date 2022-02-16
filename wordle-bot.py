@@ -110,7 +110,9 @@ def add_game_stats(stats, game):
 	return
 
 def remove_game(player_id, game_id):
+	print('removing')
 	try:
+		print('trying')
 		player = db['players'][player_id]
 		print('player exists')
 		try:
@@ -320,7 +322,11 @@ async def reset(ctx, *player_ids):
 	else:
 		if str(reaction.emoji) == '✅':
 			for player_id in valid:
-				for game_id in db['players'][player_id]['games'].keys():
+				game_ids = list(db['players'][player_id]['games'].keys())
+				if not game_ids:
+					print('last game')
+					del db['players'][player_id]
+				for game_id in game_ids:
 					remove_game(player_id, game_id)
 				#await sendDm(int(player_id), embed = create_embed("Your Wordle Scores have been reset.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))

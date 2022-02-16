@@ -91,7 +91,7 @@ for player_id, player in db['players'].items():
 		del db['players'][player_id]
 	player['stats'] = stats_dict
 print("+++++++++++++++++++++++++++++++")
-'''
+
 for game_id, game_dict in db['games'].items():
 	print(game_id)
 	stats_dict = build_stats()
@@ -105,3 +105,10 @@ for game_id, game_dict in db['games'].items():
 			print('KeyError')
 			del game_dict['games'][player_id]
 	game_dict['stats'] = stats_dict
+'''
+for player_id, player in db['players'].items():
+	print(player['name'])
+	if player['stats']['played'] == 0:
+		print('sanitized')
+		del db['players'][player_id]
+print('done')
