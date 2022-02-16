@@ -322,7 +322,7 @@ async def reset(ctx, *player_ids):
 			for player_id in valid:
 				for game_id in db['players'][player_id]['games'].keys():
 					remove_game(player_id, game_id)
-				await sendDm(int(player_id), embed = create_embed("Your Wordle Scores have been reset.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
+				#await sendDm(int(player_id), embed = create_embed("Your Wordle Scores have been reset.", "You may resend any scores you would like to keep.", bot.user, constants.COLOR2))
 			await ctx.send(embed = create_embed("Done!", "", ctx.author, constants.COLOR1))
 	return
 
@@ -442,7 +442,7 @@ async def on_message(message):
 	rows = content[content.find('\n'):]
 	game_id = int(content[space_0 + 1 : space_0 + 1 + space_1])
 
-	if (str(game_id) in list(player['games'].keys()) and player['games'][str(game_id)]):
+	if (str(game_id) in list(player['games'].keys())):
 		await message.add_reaction('👯')
 		return
 	
