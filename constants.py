@@ -13,6 +13,8 @@ players_per_page = 10
 archives_per_page = 15
 games_per_page = 15
 
+histogram_width = 7
+
 default_prefix = '!'
 
 owner_id = 275541576896217089

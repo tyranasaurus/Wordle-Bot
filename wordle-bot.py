@@ -47,16 +47,11 @@ roles = []
 active_authors = []
 messages_map = {}
 
-def build_game(score, max_turns, rows):
+def build_game(score, guesses, win, max_turns, rows):
 	game = {}
-	if score == 'X':
-		game['score'] = max_turns + constants.PENALTY
-		game['guesses'] = max_turns
-		game['win'] = False
-	else:
-		game['score'] = int(score)
-		game['guesses'] = int(score)
-		game['win'] = True
+	game['score'] = score
+	game['guesses'] = guesses
+	game['win'] = win
 	game['max turns'] = max_turns
 	game['rows'] = rows
 	green = 0
@@ -76,6 +71,7 @@ def build_game(score, max_turns, rows):
 
 def build_stats():
 	return {
+		'scores_dict': {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, 'X': 0},
 		'won': 0,
 		'lost': 0,
 		'played': 0,
@@ -94,8 +90,10 @@ def build_stats():
 def add_game_stats(stats, game):
 	if game['win']:
 		stats['won'] += 1
+		stats['scores_dict'][str(game['score'])] += 1
 	else:
 		stats['lost'] += 1
+		stats['scores_dict']['X'] += 1
 	stats['played'] += 1
 	stats['score'] += game['score']
 	stats['guesses'] += game['guesses']
@@ -154,8 +152,10 @@ def remove_game_stats(stats, game):
 	stats['played'] -= 1
 	if game['win']:
 		stats['won'] -= 1
+		stats['scores_dict'][str(game['score'])] -= 1
 	else:
 		stats['lost'] -= 1
+		stats['scores_dict']['X'] -= 1
 	stats['score'] -= game['score']
 	stats['guesses'] -= game['guesses']
 	stats['winrate'] = int(round(stats['won'] / stats['played'], 2)*100)
@@ -178,7 +178,6 @@ def build_player(name):
 
 def build_game_dict():
 	return {
-		'games': {},
 		'stats': build_stats()
 	}
 
@@ -258,6 +257,20 @@ async def deactivate_author(ctx):
 		print("ValueError")
 		pass
 
+async def make_histogram(played, scores_dict):
+	print(played)
+	print(scores_dict)
+	histogram=''
+	num_per_box = max(list(scores_dict.values())) / constants.histogram_width
+	histogram += '1️⃣' + int(round(scores_dict['1']/num_per_box))*'🟩'+'\n'
+	histogram += '2️⃣' + int(round(scores_dict['2']/num_per_box))*'🟩'+'\n'
+	histogram += '3️⃣' + int(round(scores_dict['3']/num_per_box))*'🟩'+'\n'
+	histogram += '4️⃣' + int(round(scores_dict['4']/num_per_box))*'🟩'+'\n'
+	histogram += '5️⃣' + int(round(scores_dict['5']/num_per_box))*'🟩'+'\n'
+	histogram += '6️⃣' + int(round(scores_dict['6']/num_per_box))*'🟩'+'\n'
+	histogram += '💀' + int(round(scores_dict['X']/num_per_box))*'🟩'
+	return histogram
+
 @bot.command(name='player',
              aliases=[],
              help=": prints your or another player's statistics")
@@ -272,7 +285,7 @@ async def stats(ctx, member: discord.Member = None):
 		return
 
 	stats = player_dict['stats']
-	await ctx.send(embed=create_embed("", "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage']), player, constants.COLOR1))
+	await ctx.send(embed=create_embed("", "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage'])+'\n\n'+await make_histogram(stats['played'], stats['scores_dict']), player, constants.COLOR1))
 	return
 
 @bot.command(
@@ -428,8 +441,11 @@ async def on_message(message):
 			db['players'][player_id]['subscribed'] = True
 			await message.channel.send(embed = create_embed("You've been subscribed to Wordle Bot Announcements!", "You can always unsubscribe with 'stop' or 'unsubscribe'", author, constants.COLOR1))
 			return
-	if not re.search("^Wordle \d+ ([1-9]+\d*|X)/[1-9]+\d*[*\n🟩🟧🟨🟦⬛⬜]+", content):
-		#print("Random Message")
+	print(str(content))
+	header_fmt = re.compile("^Wordle ([1-9]+\d*) ([1-9]+\d*|X)/([1-9]+\d*)\*?(.*)", re.DOTALL)
+	header = re.findall(header_fmt, content)
+	if not header:
+		print("Random Message")
 		await bot.process_commands(message)
 		return
 	try:
@@ -437,13 +453,35 @@ async def on_message(message):
 	except KeyError:
 		player=build_player(author.name+"#"+author.discriminator)
 	print("Wordle Message")
-	space_0 = content.find(' ')
-	space_1 = content[space_0 + 1:].find(' ')
-	rows = content[content.find('\n'):]
-	game_id = int(content[space_0 + 1 : space_0 + 1 + space_1])
-
-	if (str(game_id) in list(player['games'].keys())):
+	header = header[0]
+	game_id = str(header[0])
+	if (game_id in list(player['games'].keys())):
 		await message.add_reaction('👯')
+		return
+	error = False
+	score = str(header[1])
+	max_turns = int(header[2])
+	if score == 'X':
+		score = max_turns + constants.PENALTY
+		guesses = max_turns
+		win = False
+	else:
+		score = int(score)
+		guesses = score
+		win = True
+	if (guesses < 1 or guesses > max_turns):
+		print('guesses out of range')
+		error = True
+	rows = header[3]
+	print('r', rows)
+	print(guesses)
+	found = re.findall("\n((?:\n([🟩🟧🟨🟦⬛⬜]{5})){"+str(guesses)+"})([^\n🟩🟧🟨🟦⬛⬜]+.*|\n[^🟩🟧🟨🟦⬛⬜]+.*|)$", rows, re.DOTALL)
+	if not found:
+		print("doesn't fit regex")
+		error = True
+	print(found)
+	if error:
+		await message.add_reaction('❌')
 		return
 	
 	try:
@@ -451,19 +489,14 @@ async def on_message(message):
 	except KeyError:
 		game_dict = build_game_dict()
 
-	score = content[content.find('/') - 1]
-	max_turns = int(content[content.find('/') + 1])
-	game = build_game(score, max_turns, rows)
-	if (str(game_id) in list(player['games'].keys()) and not player['games'][str(game_id)]):
-		await message.add_reaction('♻️')
-	else:
-		add_game_stats(player['stats'], game)
-		await message.add_reaction('✅')
+	rows = found[0][0]
+	game = build_game(score, guesses, win, max_turns, rows)
+	add_game_stats(player['stats'], game)
 	add_game_stats(game_dict['stats'], game)
 	player['games'][str(game_id)] = game
-	game_dict['games'][player_id] = game
 	db['players'][player_id] = player
 	db['games'][str(game_id)] = game_dict
+	await message.add_reaction('✅')
 	return
 
 async def getSortedPlayers(ctx):
@@ -599,7 +632,7 @@ async def display_games(ctx, player, games):
 		game_id, game = games[gameIndex]
 		stats = game['stats']
 		name = 'Wordle '+str(game_id)
-		val = "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage'])
+		val = "Average score: " + str(stats['saverage']) + "\nWinrate: " + str(stats['winrate']) + "%\nGames Played: " + str(stats['played']) + "\nAverage 🟩: " + str(stats['gaverage']) + "\nAverage 🟨: " + str(stats['yaverage']) + '\n\n' + await make_histogram(stats['played'], stats['scores_dict'])
 		embeds[pageIndex].add_field(name=name, value=val, inline = True)
 	paginator = DiscordUtils.Pagination.CustomEmbedPaginator(ctx, timeout = constants.TIMEOUT/2, auto_footer=True, remove_reactions=True)
 	paginator.add_reaction('⏮️', "first")

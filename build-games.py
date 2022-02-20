@@ -1,10 +1,13 @@
 from replit import db
+import re
 
-def update_stats(stats, game):
+def add_game_stats(stats, game):
 	if game['win']:
 		stats['won'] += 1
+		stats['scores_dict'][str(game['score'])] += 1
 	else:
 		stats['lost'] += 1
+		stats['scores_dict']['X'] += 1
 	stats['played'] += 1
 	stats['score'] += game['score']
 	stats['guesses'] += game['guesses']
@@ -20,6 +23,7 @@ def update_stats(stats, game):
 
 def build_stats():
 	return {
+		'scores_dict': {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, 'X': 0},
 		'won': 0,
 		'lost': 0,
 		'played': 0,
@@ -34,40 +38,63 @@ def build_stats():
 		'black': 0,
 		'baverage': 0
 	}
-def build_game():
+
+def build_game_dict():
 	return {
-		'games': {},
 		'stats': build_stats()
 	}
-'''
+
 try:
 	del db['games']
 except:
 	print("No database")
 db['games'] = {}
-'''
+
 for player_id, player in db['players'].items():
 	try:
 		print(player['name'])
 	except KeyError:
 		print(player)
+		input()
+	player['stats'] = build_stats()
+	remove_ids = []
 	for game_id, player_game in player['games'].items():
 		if not player_game:
+			remove_ids.append(game_id)
 			continue
 		#print(game_id)
 		try:
-			game = db['games'][game_id]
+			game_dict = db['games'][game_id]
 			#print('old')
 		except KeyError:
-			game = build_game()
+			game_dict = build_game_dict()
 			#print('new')
+		error = False
+		rows = player_game['rows']
+		guesses = player_game['guesses']
+		max_turns = player_game['max turns']
+		print('r', rows)
+		if (guesses < 1 or guesses > max_turns):
+			print('guesses out of range')
+			error = True
 		try:
-			if game['games'][player_id]:
-				continue
-		except KeyError:
-			pass
-		game['games'][player_id] = player_game
-		update_stats(game['stats'], player_game)
-		db['games'][game_id] = game
+			found = re.findall("\n((?:\n([🟩🟧🟨🟦⬛⬜]{5})){"+str(guesses)+"})([^\n🟩🟧🟨🟦⬛⬜]+.*|\n[^🟩🟧🟨🟦⬛⬜]+.*|)$", rows)
+			if not found:
+				print("doesn't fit regex")
+				error = True
+		except TypeError:
+			error = True
+		if error:
+			remove_ids.append(game_id)
+			continue
+		rows = found[0][0]
+		player_game['rows'] = rows
+		add_game_stats(player['stats'], player_game)
+		add_game_stats(game_dict['stats'], player_game)
+		db['games'][game_id] = game_dict
+	for game_id in remove_ids:
+		del player['games'][game_id]
+	db['players'][player_id] = player
+print('done')
 	
 		

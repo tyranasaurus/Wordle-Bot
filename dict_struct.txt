@@ -13,5 +13,5 @@ guild_ids
 	prefix
 
 game_ids
-	games: player_ids: {score, guessses, win, max_turns, rows, green, yellow, black}
+	#games: player_ids: {score, guesses, win, max_turns, rows, green, yellow, black}
 	stats: {won, lost, played, score, guesses, saverage, winrate, green, gaverage, yellow, yaverage, black, baverage}
