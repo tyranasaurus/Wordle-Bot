@@ -13,6 +13,8 @@ players_per_page = 10
 archives_per_page = 15
 games_per_page = 15
 
+ewma_window = 20
+
 histogram_width = 7
 
 default_prefix = '!'

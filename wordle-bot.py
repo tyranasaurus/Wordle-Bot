@@ -207,8 +207,9 @@ def create_help_embed(ctx):
 	help_embed = discord.Embed(title='WORDLE BOT HELP', author=author, color=constants.COLOR1)
 	help_embed.description = 'List of all the commands for the bot and what they do, along with other information.\nDISCLAIMER: this bot is not robust and is not meant to check inputs for correctness, so don\'t treat it as such. Instead, just post your scores and have fun!'
 	help_embed.add_field(name='Submit New Score', value='-Every day, go to https://www.powerlanguage.co.uk/wordle/ and play Wordle!\n-Once done, click share score, copy to clipboard, and paste it into a channel, and the bot will log your score', inline=False)
-	help_embed.add_field(name=prefix+'lb or '+prefix+'leaderboard', value='Displays the leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
-	help_embed.add_field(name=prefix+'lbs or '+prefix+'simple', value='Displays a more compact leaderboard for this server.', inline=False)
+	help_embed.add_field(name=prefix+'lb or '+prefix+'leaderboard', value='Displays a compact leaderboard for this server. Your wordle stats are synced across servers!', inline=False)
+	help_embed.add_field(name=prefix+'lbd or '+prefix+'detailed', value='Displays a more detailed leaderboard for this server.', inline=False)
+	help_embed.add_field(name=prefix+'lbw or '+prefix+'weighted', value='Displays the (currently experimental) weighted leaderboard for this server.', inline=False)
 	help_embed.add_field(name=prefix+'games id1 id2 ...', value='Displays overall statistics for wordle games, including average score and winrate. You can specify specific game ids, or leave it blank to display them all.', inline=False)
 	help_embed.add_field(name=prefix+'player [@member]', value="Displays your or another member's wordle stats", inline=False)
 	help_embed.add_field(name=prefix+'archive id1 id2 ...', value='Displays your wordle games. You can specify specific game ids, or leave it blank to display them all.', inline=False)
@@ -222,12 +223,11 @@ def create_help_embed(ctx):
 
 async def create_announce_embed():
 	me = await bot.fetch_user(constants.owner_id)
-	announce_embed = discord.Embed(title='WORDLE BOT v3.0!', author=me, color=constants.COLOR1)
+	announce_embed = discord.Embed(title='WORDLE BOT v3.1.1!', author=me, color=constants.COLOR1)
 	announce_embed.set_footer(text = "This message was automatically sent by Wordle Bot. If you would like to unsubscribe from future announcements, send me 'STOP'")
-	announce_embed.description = 'Major updates to the bot!'
-	announce_embed.add_field(name='GAMES ADDED PRIOR TO WORDLE 221 WILL NO LONGER BE SUPPORTED', value='All wordle games submitted before Wordle 221 will be purged from the database, and your average scores may be affected. These are all the ones that have a series of emojis when you use !archive. If you want to keep these, use the search function to find the messages from the past and resend them to the bot!', inline=False)
-	announce_embed.add_field(name="What's new in Wordle Bot v3.0?", value="- This announcement system!\n- Individual game stats (averages and winrates for a particular wordle).\n- The ability to see other user's stats.\n- DM command support.\n- Framework for a new scoring system!\n- Other minor modifications and bug fixes.", inline=False)
-	announce_embed.add_field(name="What's in the works?", value="- A new scoring system that makes the leaderboard more dynamic!\n- An optional notification system to remind you to play your wordle game daily\n- Ability to undo the last submitted wordle in event of a mistake.\n- More robust checks for valid inputs, sanitization of clearly false inputs, and only allowing submission of the day's wordle.", inline=False)
+	announce_embed.description = 'New updates to bot structure!'
+	announce_embed.add_field(name="What's new in Wordle Bot v3.0?", value="- Sanitized Archive\n- Re-calibrated stats\n- A cool new player statistics histogram (use !player) to view\n- an experimental version of the new leaderboard (use !lbw to see). Note: bot may be slow in producing leaderboard at the moment.\n- More robust checks for valid inputs.\n- the default leaderboard is now the simple one, use !lbd for the detailed view.", inline=False)
+	announce_embed.add_field(name="What's in the works?", value="- A new scoring system that makes the leaderboard more dynamic!\n- An optional notification system to remind you to play your wordle game daily\n- Ability to undo the last submitted wordle in event of a mistake.\n- Even more robust checks for valid inputs.", inline=False)
 	announce_embed.add_field(name='Add the bot to your own server!', value='On a computer, click on the bot and hit \'Add to Server\' to use it in another server! You must have admin privileges to do so. Scores sync across servers!', inline=False)
 	announce_embed.add_field(name='Have suggestions/bugs? Join the Wordle Bot Community Server!', value='https://discord.gg/B492ArRmCQ. Join to report bugs, suggest features, get help, and witness and assist with bot development!', inline=False)
 	announce_embed.set_author(name=me.name+"#"+me.discriminator, icon_url=me.avatar_url)
@@ -522,8 +522,48 @@ async def getSortedPlayers(ctx):
 		return
 	return sorted(guild_players, key = lambda x: (x['stats']['saverage'], x['stats']['winrate']*-1, x['stats']['played']*-1, x['stats']['gaverage']*-1, x['stats']['yaverage']*-1))
 
-@bot.command(name='lbs',
-             aliases=['simple'],
+async def getSortedbyWeightPlayers(ctx):
+	guild = ctx.guild
+	author = ctx.author
+	guild_players = []
+	guild_members = guild.members
+	member_ids = []
+	for member in guild_members:
+		member_ids.append(str(member.id))
+	for player_id, player in db['players'].items():
+		if player_id not in member_ids:
+			continue
+		guild_players.append(player)
+	if not len(guild_players):
+		await ctx.send(embed=create_embed("No wordle games have been added yet! Send some game results to get started!", "", author, constants.COLOR2))
+		return
+	for player in guild_players:
+		player_games = player['games']
+		last = max(player_games.keys(), key=int)
+		print(last)
+		first = last - constants.ewma_window
+		ewma = 0
+		a = 2/(constants.ewma_window+1)
+		try:
+			ewma = player_games[str(first)]['score']
+		except KeyError:
+			try:
+				ewma = db['games'][str(first)]['stats']['score']
+			except KeyError:
+				ewma = 4 #Fix this to be overall avg or smthn
+		for id in range(first+1, last+1):
+			try:
+				ewma = a*player_games[str(id)]['score']+(1-a)*ewma
+			except KeyError:
+				try:
+					ewma = a*db['games'][str(first)]['stats']['score']+(1-a)*ewma
+				except KeyError:
+					ewma = a*4+(1-a)*ewma #Fix this to be overall avg or smthn
+		player['stats']['ewma'] = ewma
+	return sorted(guild_players, key = lambda x: (x['stats']['ewma'], x['stats']['saverage'], x['stats']['winrate']*-1, x['stats']['played']*-1, x['stats']['gaverage']*-1, x['stats']['yaverage']*-1))
+
+@bot.command(name='lb',
+             aliases=['leaderboard'],
              help=': Displays your statistics')
 async def lbs(ctx):
 	author = ctx.author
@@ -538,8 +578,24 @@ async def lbs(ctx):
 	print("hello")
 	return
 
-@bot.command(name='lb',
-             aliases=['leaderboard'],
+@bot.command(name='lbw',
+             aliases=['weighted'],
+             help=': Displays your statistics')
+async def lbn(ctx):
+	author = ctx.author
+	sortedPlayers = await getSortedbyWeightPlayers(ctx)
+	title = "Wordle Leaderboard"
+	description = ""
+	for playerIndex in range(0, len(sortedPlayers)):
+		player = sortedPlayers[playerIndex]
+		stats = player['stats']
+		description += str(playerIndex+1)+'. '+player['name']+' - ' + str(stats['ewma']) + '\n'
+	await ctx.send(embed=create_embed(title, description[:-1], None, constants.COLOR1))
+	print("hello")
+	return
+
+@bot.command(name='lbd',
+             aliases=['detailed'],
              help='Displays the wordle leaderboard')
 async def lb(ctx):
 	author = ctx.author
