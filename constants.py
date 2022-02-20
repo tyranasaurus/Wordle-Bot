@@ -13,7 +13,7 @@ players_per_page = 10
 archives_per_page = 15
 games_per_page = 15
 
-ewma_window = 20
+ewma_window = 15
 
 histogram_width = 7
 

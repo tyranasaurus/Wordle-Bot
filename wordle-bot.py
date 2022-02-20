@@ -226,8 +226,8 @@ async def create_announce_embed():
 	announce_embed = discord.Embed(title='WORDLE BOT v3.1.1!', author=me, color=constants.COLOR1)
 	announce_embed.set_footer(text = "This message was automatically sent by Wordle Bot. If you would like to unsubscribe from future announcements, send me 'STOP'")
 	announce_embed.description = 'New updates to bot structure!'
-	announce_embed.add_field(name="What's new in Wordle Bot v3.0?", value="- Sanitized Archive\n- Re-calibrated stats\n- A cool new player statistics histogram (use !player) to view\n- an experimental version of the new leaderboard (use !lbw to see). Note: bot may be slow in producing leaderboard at the moment.\n- More robust checks for valid inputs.\n- the default leaderboard is now the simple one, use !lbd for the detailed view.", inline=False)
-	announce_embed.add_field(name="What's in the works?", value="- A new scoring system that makes the leaderboard more dynamic!\n- An optional notification system to remind you to play your wordle game daily\n- Ability to undo the last submitted wordle in event of a mistake.\n- Even more robust checks for valid inputs.", inline=False)
+	announce_embed.add_field(name="What's new in Wordle Bot v3.0?", value="- Sanitized Archive\n- Re-calibrated stats\n- A cool new player statistics histogram (use !player) to view\n- an experimental version of the new leaderboard (use !lbw to see). Note: I expect this to be both slow and buggy in its current state.\n- More robust checks for valid inputs.\n- the default leaderboard is now the simple one, use !lbd for the detailed view.", inline=False)
+	announce_embed.add_field(name="What's in the works?", value="- A complete weighted leaderboard!\n- An optional notification system to remind you to play your wordle game daily\n- Ability to undo the last submitted wordle in event of a mistake.\n- Even more robust checks for valid inputs.", inline=False)
 	announce_embed.add_field(name='Add the bot to your own server!', value='On a computer, click on the bot and hit \'Add to Server\' to use it in another server! You must have admin privileges to do so. Scores sync across servers!', inline=False)
 	announce_embed.add_field(name='Have suggestions/bugs? Join the Wordle Bot Community Server!', value='https://discord.gg/B492ArRmCQ. Join to report bugs, suggest features, get help, and witness and assist with bot development!', inline=False)
 	announce_embed.set_author(name=me.name+"#"+me.discriminator, icon_url=me.avatar_url)
@@ -433,7 +433,7 @@ async def on_message(message):
 	author = message.author
 	player_id = str(author.id)
 	guild = message.guild
-	#print('guild: ', guild.name)
+	print('guild: ', guild.name)
 	#invites = await guild.invites()
 	#print(invites)
 	channel = message.channel
@@ -447,18 +447,18 @@ async def on_message(message):
 			db['players'][player_id]['subscribed'] = True
 			await message.channel.send(embed = create_embed("You've been subscribed to Wordle Bot Announcements!", "You can always unsubscribe with 'stop' or 'unsubscribe'", author, constants.COLOR1))
 			return
-	print(str(content))
+	#print(str(content))
 	header_fmt = re.compile("^Wordle ([1-9]+\d*) ([1-9]+\d*|X)/([1-9]+\d*)\*?(.*)", re.DOTALL)
 	header = re.findall(header_fmt, content)
 	if not header:
-		print("Random Message")
+		#print("Random Message")
 		await bot.process_commands(message)
 		return
 	try:
 		player = db['players'][player_id]
 	except KeyError:
 		player=build_player(author.name+"#"+author.discriminator)
-	print("Wordle Message")
+	#print("Wordle Message")
 	header = header[0]
 	game_id = str(header[0])
 	if (game_id in list(player['games'].keys())):
@@ -539,7 +539,9 @@ async def getSortedbyWeightPlayers(ctx):
 		return
 	for player in guild_players:
 		player_games = player['games']
-		last = max(player_games.keys(), key=int)
+		def make_int(x):
+			return int(x)
+		last = int(max(player_games.keys(), key=make_int))
 		print(last)
 		first = last - constants.ewma_window
 		ewma = 0
@@ -548,7 +550,7 @@ async def getSortedbyWeightPlayers(ctx):
 			ewma = player_games[str(first)]['score']
 		except KeyError:
 			try:
-				ewma = db['games'][str(first)]['stats']['score']
+				ewma = db['games'][str(first)]['stats']['score'] + 1
 			except KeyError:
 				ewma = 4 #Fix this to be overall avg or smthn
 		for id in range(first+1, last+1):
@@ -556,7 +558,7 @@ async def getSortedbyWeightPlayers(ctx):
 				ewma = a*player_games[str(id)]['score']+(1-a)*ewma
 			except KeyError:
 				try:
-					ewma = a*db['games'][str(first)]['stats']['score']+(1-a)*ewma
+					ewma = a*(db['games'][str(first)]['stats']['score'] + 1)+(1-a)*ewma
 				except KeyError:
 					ewma = a*4+(1-a)*ewma #Fix this to be overall avg or smthn
 		player['stats']['ewma'] = ewma
@@ -581,7 +583,7 @@ async def lbs(ctx):
 @bot.command(name='lbw',
              aliases=['weighted'],
              help=': Displays your statistics')
-async def lbn(ctx):
+async def lbw(ctx):
 	author = ctx.author
 	sortedPlayers = await getSortedbyWeightPlayers(ctx)
 	title = "Wordle Leaderboard"
