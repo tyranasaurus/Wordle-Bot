@@ -15,7 +15,9 @@ import re
 
 from replit import db
 
-from collections import defaultdict
+from typing import Optional
+
+#from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO)
 
@@ -276,7 +278,7 @@ async def make_histogram(played, scores_dict):
 @bot.command(name='player',
              aliases=[],
              help=": prints your or another player's statistics")
-async def stats(ctx, member: discord.Member = None):
+async def player(ctx, member: discord.Member = None):
 	player = member or ctx.author
 	player_id = str(player.id)
 	try:
@@ -489,20 +491,20 @@ async def on_message(message):
 	if error:
 		await message.add_reaction('❌')
 		return
+	async with channel.typing():
+		try:
+			game_dict = db['games'][str(game_id)]
+		except KeyError:
+			game_dict = build_game_dict()
 	
-	try:
-		game_dict = db['games'][str(game_id)]
-	except KeyError:
-		game_dict = build_game_dict()
-
-	rows = found[0][0]
-	game = build_game(score, guesses, win, max_turns, rows)
-	add_game_stats(player['stats'], game)
-	add_game_stats(game_dict['stats'], game)
-	player['games'][str(game_id)] = game
-	db['players'][player_id] = player
-	db['games'][str(game_id)] = game_dict
-	await message.add_reaction('✅')
+		rows = found[0][0]
+		game = build_game(score, guesses, win, max_turns, rows)
+		add_game_stats(player['stats'], game)
+		add_game_stats(game_dict['stats'], game)
+		player['games'][str(game_id)] = game
+		db['players'][player_id] = player
+		db['games'][str(game_id)] = game_dict
+		await message.add_reaction('✅')
 	return
 
 async def getSortedPlayers(ctx):
@@ -523,45 +525,46 @@ async def getSortedPlayers(ctx):
 	return sorted(guild_players, key = lambda x: (x['stats']['saverage'], x['stats']['winrate']*-1, x['stats']['played']*-1, x['stats']['gaverage']*-1, x['stats']['yaverage']*-1))
 
 async def getSortedbyWeightPlayers(ctx):
-	guild = ctx.guild
-	author = ctx.author
-	guild_players = []
-	guild_members = guild.members
-	member_ids = []
-	for member in guild_members:
-		member_ids.append(str(member.id))
-	for player_id, player in db['players'].items():
-		if player_id not in member_ids:
-			continue
-		guild_players.append(player)
-	if not len(guild_players):
-		await ctx.send(embed=create_embed("No wordle games have been added yet! Send some game results to get started!", "", author, constants.COLOR2))
-		return
-	for player in guild_players:
-		player_games = player['games']
-		def make_int(x):
-			return int(x)
-		last = int(max(player_games.keys(), key=make_int))
-		print(last)
-		first = last - constants.ewma_window
-		ewma = 0
-		a = 2/(constants.ewma_window+1)
-		try:
-			ewma = player_games[str(first)]['score']
-		except KeyError:
+	async with ctx.typing():
+		guild = ctx.guild
+		author = ctx.author
+		guild_players = []
+		guild_members = guild.members
+		member_ids = []
+		for member in guild_members:
+			member_ids.append(str(member.id))
+		for player_id, player in db['players'].items():
+			if player_id not in member_ids:
+				continue
+			guild_players.append(player)
+		if not len(guild_players):
+			await ctx.send(embed=create_embed("No wordle games have been added yet! Send some game results to get started!", "", author, constants.COLOR2))
+			return
+		for player in guild_players:
+			player_games = player['games']
+			def make_int(x):
+				return int(x)
+			last = int(max(player_games.keys(), key=make_int))
+			#print(last)
+			first = last - constants.ewma_window
+			ewma = 0
+			a = 2/(constants.ewma_window+1)
 			try:
-				ewma = db['games'][str(first)]['stats']['score'] + 1
-			except KeyError:
-				ewma = 4 #Fix this to be overall avg or smthn
-		for id in range(first+1, last+1):
-			try:
-				ewma = a*player_games[str(id)]['score']+(1-a)*ewma
+				ewma = player_games[str(first)]['score']
 			except KeyError:
 				try:
-					ewma = a*(db['games'][str(first)]['stats']['score'] + 1)+(1-a)*ewma
+					ewma = db['games'][str(first)]['stats']['saverage'] + 1
 				except KeyError:
-					ewma = a*4+(1-a)*ewma #Fix this to be overall avg or smthn
-		player['stats']['ewma'] = ewma
+					ewma = 4 #Fix this to be overall avg or smthn
+			for id in range(first+1, last+1):
+				try:
+					ewma = a*player_games[str(id)]['score']+(1-a)*ewma
+				except KeyError:
+					try:
+						ewma = a*(db['games'][str(first)]['stats']['saverage'] + 1)+(1-a)*ewma
+					except KeyError:
+						ewma = a*4+(1-a)*ewma #Fix this to be overall avg or smthn
+			player['stats']['ewma'] = round(ewma, 2)
 	return sorted(guild_players, key = lambda x: (x['stats']['ewma'], x['stats']['saverage'], x['stats']['winrate']*-1, x['stats']['played']*-1, x['stats']['gaverage']*-1, x['stats']['yaverage']*-1))
 
 @bot.command(name='lb',
@@ -660,8 +663,8 @@ async def display_archive(ctx, player, games):
 @bot.command(name='archive',
              aliases=[],
              help='Displays your stats for specific game(s)')
-async def games(ctx, *game_ids):
-	player = ctx.author
+async def archive(ctx, member: Optional[discord.Member] = None, *game_ids):
+	player = member or ctx.author
 	player_id = str(player.id)
 
 	try:

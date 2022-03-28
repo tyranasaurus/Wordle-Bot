@@ -3,6 +3,17 @@ from replit import db
 import os
 import pickle
 
+dbt = {}
+for key, value, in db.values():
+	dbt[key] = value
+
+db.db_url = ""
+
+for key, value in dbt.values():
+	db[key] = value
+
+
+
 '''
 global my_dict
 my_dict = {}
@@ -20,7 +31,7 @@ with open('my_dict.json', 'w') as f:
 	json.dump(my_dict, f)
 
 '''
-
+'''
 f = open("url.txt", "a")
 f.write(os.getenv("REPLIT_DB_URL"))
 f.close()
@@ -28,3 +39,4 @@ f = open("db.txt", "a")
 for key, value in db.items():
 	f.write(str(key)+": "+str(value)+'\n')
 f.close()
+'''
